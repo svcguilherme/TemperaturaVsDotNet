@@ -1,0 +1,27 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'api-weather'
+    static_configs:
+      - targets: ['api-weather:8080']
+    metrics_path: /metrics
+
+  - job_name: 'api-location'
+    static_configs:
+      - targets: ['api-location:8080']
+    metrics_path: /metrics
+
+  - job_name: 'api-person'
+    static_configs:
+      - targets: ['api-person:8080']
+    metrics_path: /metrics
+
+  - job_name: 'api-orders'
+    static_configs:
+      - targets: ['api-orders:8080']
+    metrics_path: /metrics
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']

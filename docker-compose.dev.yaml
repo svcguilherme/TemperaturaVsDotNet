@@ -1,0 +1,121 @@
+version: '3.9'
+
+# Portas deslocadas para não colidir com projeto Node.js/React existente (3000-3004)
+# Angular:4200 | APIs .NET: 5001-5004 | RabbitMQ: 5673/15673 | Redis: 6380 | Prometheus: 9091
+
+x-dotnet-env: &dotnet-env
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+  MONGODB_URI: mongodb+srv://temperaturedb:PassAdmin123@cluster0.vkfb6wm.mongodb.net/temperaturadb?appName=Cluster0
+  REDIS_URL: redis:6379
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  ASPNETCORE_ENVIRONMENT: Development
+
+services:
+  # ── Infra ─────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5673:5672"     # AMQP (Node.js usa 5672)
+      - "25673:15672"   # Management UI (Node.js usa 15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"     # Node.js usa 6379
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.97.0
+    command: ["--config=/etc/otel/otel-collector-config.yaml"]
+    ports:
+      - "4320:4317"     # gRPC (Node.js usa 4317)
+      - "4319:4318"     # HTTP (Node.js usa 4318)
+      - "8890:8889"     # Metrics
+    volumes:
+      - ./k8s/configmaps/otel-config-local.yaml:/etc/otel/otel-collector-config.yaml
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9991:9090"     # Node.js usa 9090
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    volumes:
+      - ./k8s/configmaps/prometheus-local.yml:/etc/prometheus/prometheus.yml
+
+  # ── APIs .NET ──────────────────────────────────────
+  api-weather:
+    build: ./api-weather
+    ports:
+      - "7001:8080"     # Node.js api-weather usa 3001
+    environment:
+      <<: *dotnet-env
+      SQLITE_PATH: /data/transactions.db
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  api-location:
+    build: ./api-location
+    ports:
+      - "7002:8080"     # Node.js api-location usa 3002
+    environment:
+      <<: *dotnet-env
+      SQLITE_PATH: /data/transactions.db
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  api-person:
+    build: ./api-person
+    ports:
+      - "7003:8080"     # Node.js api-person usa 3003
+    environment:
+      <<: *dotnet-env
+      SQLITE_PATH: /data/transactions.db
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  api-orders:
+    build: ./api-orders
+    ports:
+      - "7004:8080"     # Novo serviço (Node.js usava 3004)
+    environment:
+      <<: *dotnet-env
+      SQLITE_PATH: /data/orders.db
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  # ── Frontend Angular ───────────────────────────────
+  frontend:
+    build: ./frontend
+    ports:
+      - "6201:80"       # React usa 3000; Angular dev convencional é 4200
+    depends_on:
+      - api-weather
+      - api-location
+      - api-person
+      - api-orders
+
+volumes:
+  sqlite-data:

@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: temperaturaapp
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'api-weather'
+        static_configs:
+          - targets: ['api-weather:8080']
+        metrics_path: /metrics
+      - job_name: 'api-location'
+        static_configs:
+          - targets: ['api-location:8080']
+        metrics_path: /metrics
+      - job_name: 'api-person'
+        static_configs:
+          - targets: ['api-person:8080']
+        metrics_path: /metrics
+      - job_name: 'api-orders'
+        static_configs:
+          - targets: ['api-orders:8080']
+        metrics_path: /metrics
+      - job_name: 'otel-collector'
+        static_configs:
+          - targets: ['otel-collector:8889']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: temperaturaapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.51.0
+        args:
+          - --config.file=/etc/prometheus/prometheus.yml
+          - --storage.tsdb.path=/prometheus
+          - --web.enable-lifecycle
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        resources:
+          requests: { memory: 256Mi, cpu: 100m }
+          limits:   { memory: 512Mi, cpu: 500m }
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: prometheus-config

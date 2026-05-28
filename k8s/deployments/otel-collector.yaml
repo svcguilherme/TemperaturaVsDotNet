@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: temperaturaapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.97.0
+        args: ["--config=/etc/otel/otel-collector-config.yaml"]
+        ports:
+        - containerPort: 4317
+        - containerPort: 4318
+        - containerPort: 8889
+        volumeMounts:
+        - name: otel-config
+          mountPath: /etc/otel
+        resources:
+          requests: { memory: 128Mi, cpu: 100m }
+          limits:   { memory: 256Mi, cpu: 500m }
+      volumes:
+      - name: otel-config
+        configMap:
+          name: otel-collector-config

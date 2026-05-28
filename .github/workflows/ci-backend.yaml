@@ -1,0 +1,43 @@
+name: CI Backend (.NET)
+
+on:
+  push:
+    paths:
+      - 'api-weather/**'
+      - 'api-location/**'
+      - 'api-person/**'
+      - 'api-orders/**'
+  pull_request:
+    paths:
+      - 'api-*/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-weather, api-location, api-person, api-orders]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        working-directory: ${{ matrix.service }}
+        run: dotnet restore
+
+      - name: Build
+        working-directory: ${{ matrix.service }}
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        working-directory: ${{ matrix.service }}
+        run: dotnet test --no-build -c Release --verbosity normal
+        continue-on-error: true
+
+      - name: Build Docker image
+        run: docker build -t ${{ matrix.service }}:${{ github.sha }} ./${{ matrix.service }}
