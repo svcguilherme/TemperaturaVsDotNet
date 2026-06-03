@@ -1,0 +1,28 @@
+# Secrets e variáveis de ambiente
+.env
+
+# Build outputs .NET
+**/bin/
+**/obj/
+
+# Build outputs Node/Angular
+**/node_modules/
+**/dist/
+
+# Dados locais SQLite
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Logs
+**/*.log
+
+# Visual Studio / Rider
+.vs/
+*.user
+*.suo
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -5,7 +5,7 @@ version: '3.9'
 
 x-dotnet-env: &dotnet-env
   RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-  MONGODB_URI: mongodb+srv://temperaturedb:PassAdmin123@cluster0.vkfb6wm.mongodb.net/temperaturadb?appName=Cluster0
+  MONGODB_URI: ${MONGODB_URI}
   REDIS_URL: redis:6379
   OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
   ASPNETCORE_ENVIRONMENT: Development
